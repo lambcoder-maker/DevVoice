@@ -1,0 +1,7 @@
+torch>=2.0.0
+torchaudio>=2.0.0
+nemo_toolkit[asr]>=1.22.0
+PyQt6>=6.5.0
+sounddevice>=0.4.6
+numpy>=1.24.0
+pynput>=1.7.6
