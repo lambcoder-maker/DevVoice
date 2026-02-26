@@ -9,6 +9,8 @@ from ui.system_tray import SystemTray
 from ui.main_window import MainWindow
 from ui.control_window import ControlWindow
 from ui.model_download import ModelLoadDialog
+from ui.model_selector import ModelSelectorDialog
+import config
 
 
 class TranscriptionWorker(QThread):
@@ -49,6 +51,7 @@ class SpeechToTextApp(QObject):
         self.system_tray.show_window_requested.connect(self.main_window.show)
         self.system_tray.toggle_recording_requested.connect(self.on_toggle_recording)
         self.system_tray.quit_requested.connect(self.quit)
+        self.system_tray.change_model_requested.connect(self.on_change_model)
         self.control_window.toggle_recording.connect(self.on_toggle_recording)
 
     def start(self):
@@ -143,6 +146,38 @@ class SpeechToTextApp(QObject):
             print("No speech detected.")
 
         self.worker = None
+
+    def on_change_model(self):
+        """Open model selector and reload if user picks a different model."""
+        dialog = ModelSelectorDialog(current_model=self.transcriber.model_id)
+        if dialog.exec() != ModelSelectorDialog.DialogCode.Accepted:
+            return
+
+        new_model = dialog.selected_model
+        if not new_model or new_model == self.transcriber.model_id:
+            return
+
+        # Persist choice
+        config.set_model(new_model)
+
+        # Stop hotkey while reloading
+        self.hotkey_manager.stop()
+        self.is_recording = False
+
+        # Replace transcriber with new model
+        self.transcriber = Transcriber(model=new_model)
+
+        # Show loading UI and reload
+        self.system_tray.set_status("loading")
+        self.control_window.set_loading()
+
+        if not self.transcriber.is_model_cached():
+            dialog = ModelLoadDialog(self.transcriber)
+            if not dialog.start_loading():
+                return
+            self._on_model_ready()
+        else:
+            self._load_model_async()
 
     def quit(self):
         """Clean shutdown of the application."""

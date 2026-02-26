@@ -11,6 +11,7 @@ class SystemTray(QObject):
     show_window_requested = pyqtSignal()
     quit_requested = pyqtSignal()
     toggle_recording_requested = pyqtSignal()
+    change_model_requested = pyqtSignal()
 
     # Status colors
     COLORS = {
@@ -37,6 +38,9 @@ class SystemTray(QObject):
 
         show_action = self.menu.addAction("Show History")
         show_action.triggered.connect(self.show_window_requested.emit)
+
+        change_model_action = self.menu.addAction("Change Model…")
+        change_model_action.triggered.connect(self.change_model_requested.emit)
 
         self.menu.addSeparator()
 
