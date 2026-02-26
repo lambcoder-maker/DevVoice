@@ -2,7 +2,7 @@
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QTextEdit, QApplication
+    QLabel, QTextEdit, QApplication, QProgressBar
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -39,6 +39,18 @@ class ControlWindow(QWidget):
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("font-size: 12px; color: #666;")
         layout.addWidget(self.status_label)
+
+        # Loading progress bar (hidden by default)
+        self.loading_bar = QProgressBar()
+        self.loading_bar.setRange(0, 0)  # Indeterminate / animated
+        self.loading_bar.setTextVisible(False)
+        self.loading_bar.setMaximumHeight(4)
+        self.loading_bar.setStyleSheet("""
+            QProgressBar { border: none; background: #eee; border-radius: 2px; }
+            QProgressBar::chunk { background: #2196F3; border-radius: 2px; }
+        """)
+        self.loading_bar.hide()
+        layout.addWidget(self.loading_bar)
 
         # Text display area
         self.text_display = QTextEdit()
@@ -177,13 +189,22 @@ class ControlWindow(QWidget):
         self.status_label.setText("✓ Done!")
         self.status_label.setStyleSheet("font-size: 12px; color: #4CAF50;")
 
-    def set_loading(self):
-        """Show loading state."""
+    def set_loading(self, model_id: str = ""):
+        """Show loading state with animated progress bar."""
         self.record_btn.setEnabled(False)
-        self.record_btn.setText("Loading model...")
-        self.status_label.setText("Loading Parakeet model, please wait...")
+        self.record_btn.setText("⏳ Loading model...")
+        name = model_id.split("/")[-1] if model_id else "model"
+        self.status_label.setText(f"Loading {name} — this takes ~30s")
+        self.status_label.setStyleSheet("font-size: 12px; color: #888;")
+        self.loading_bar.show()
+
+    def set_loading_status(self, message: str):
+        """Update the status line while loading (called from progress signals)."""
+        self.status_label.setText(message)
 
     def set_ready(self):
         """Show ready state after loading."""
+        self.loading_bar.hide()
         self.record_btn.setEnabled(True)
+        self.status_label.setStyleSheet("font-size: 12px; color: #666;")
         self.set_recording(False)
