@@ -8,6 +8,7 @@ from keyboard_typer import KeyboardTyper
 from ui.system_tray import SystemTray
 from ui.main_window import MainWindow
 from ui.control_window import ControlWindow
+from ui.model_download import ModelLoadDialog
 
 
 class TranscriptionWorker(QThread):
@@ -51,22 +52,47 @@ class SpeechToTextApp(QObject):
         self.control_window.toggle_recording.connect(self.on_toggle_recording)
 
     def start(self):
-        """Start the application."""
-        print("Loading Parakeet model (this may take a moment)...")
+        """Start the application, downloading the model on first run if needed."""
         self.system_tray.set_status("loading")
-        self.control_window.set_loading()
-        self.control_window.show()
 
-        # Process events to show the window before blocking model load
-        from PyQt6.QtWidgets import QApplication
-        QApplication.processEvents()
+        if not self.transcriber.is_model_cached():
+            # First run: show download + load dialog (blocks until done or cancelled)
+            dialog = ModelLoadDialog(self.transcriber)
+            if not dialog.start_loading():
+                from PyQt6.QtWidgets import QApplication
+                QApplication.quit()
+                return
+        else:
+            # Model is cached: load in background, show control window as "loading"
+            self.control_window.set_loading()
+            self.control_window.show()
+            self._load_model_async()
+            return
 
-        self.transcriber.load_model()
+        self._on_model_ready()
+
+    def _load_model_async(self):
+        """Load a cached model in a background thread."""
+        from ui.model_download import _ModelLoaderThread
+        self._loader = _ModelLoaderThread(self.transcriber)
+        self._loader.finished.connect(self._on_model_ready)
+        self._loader.error.connect(self._on_model_error)
+        self._loader.start()
+
+    def _on_model_ready(self):
+        """Called when model is loaded and ready."""
         print("Model loaded. Ready for transcription.")
         self.system_tray.set_status("idle")
         self.control_window.set_ready()
+        self.control_window.show()
         self.system_tray.show()
         self.hotkey_manager.start()
+
+    def _on_model_error(self, message: str):
+        """Called if model loading fails after caching."""
+        print(f"Model load error: {message}")
+        self.control_window.set_loading()  # leave disabled state visible
+        self.system_tray.set_status("loading")
 
     def on_toggle_recording(self):
         """Handle hotkey toggle for recording."""

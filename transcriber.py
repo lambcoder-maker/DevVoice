@@ -1,5 +1,6 @@
 """Parakeet model loading and inference."""
 
+import os
 import numpy as np
 import torch
 from typing import Optional
@@ -9,6 +10,8 @@ class Transcriber:
     """Handles speech-to-text using NVIDIA Parakeet model."""
 
     MODEL_NAME = "nvidia/parakeet-tdt-1.1b"
+    # NeMo caches downloaded models here
+    _NEMO_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "torch", "NeMo")
 
     def __init__(self):
         self.model = None
@@ -16,6 +19,16 @@ class Transcriber:
 
         if self.device == "cpu":
             print("WARNING: CUDA not available. Transcription will be slow.")
+
+    def is_model_cached(self) -> bool:
+        """Return True if the model has already been downloaded."""
+        if not os.path.isdir(self._NEMO_CACHE):
+            return False
+        model_slug = self.MODEL_NAME.replace("/", "--")
+        for entry in os.listdir(self._NEMO_CACHE):
+            if model_slug in entry and entry.endswith(".nemo"):
+                return True
+        return False
 
     def load_model(self):
         """Load the Parakeet model from NeMo."""

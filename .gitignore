@@ -10,7 +10,15 @@ __pycache__/
 .Python
 *.egg-info/
 dist/
-build/
+# PyInstaller intermediate output only — keep build/ scripts
+build/*.toc
+build/*.pkg
+build/*.exe
+build/localpycos/
+build/PKG-*/
+
+# Claude Code session files
+.claude/
 
 # IDE
 .idea/
