@@ -67,7 +67,7 @@ class SpeechToTextApp(QObject):
                 return
         else:
             # Model is cached: load in background, show control window as "loading"
-            self.control_window.set_loading()
+            self.control_window.set_loading(self.transcriber.model_id)
             self.control_window.show()
             self._load_model_async()
             return
@@ -78,6 +78,7 @@ class SpeechToTextApp(QObject):
         """Load a cached model in a background thread."""
         from ui.model_download import _ModelLoaderThread
         self._loader = _ModelLoaderThread(self.transcriber)
+        self._loader.progress.connect(self.control_window.set_loading_status)
         self._loader.finished.connect(self._on_model_ready)
         self._loader.error.connect(self._on_model_error)
         self._loader.start()
@@ -169,7 +170,7 @@ class SpeechToTextApp(QObject):
 
         # Show loading UI and reload
         self.system_tray.set_status("loading")
-        self.control_window.set_loading()
+        self.control_window.set_loading(new_model)
 
         if not self.transcriber.is_model_cached():
             dialog = ModelLoadDialog(self.transcriber)

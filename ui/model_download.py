@@ -1,7 +1,9 @@
 """First-run dialog: downloads and loads the Parakeet model with visible progress."""
 
+import os
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QProgressBar, QPushButton, QApplication
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar,
+    QPushButton, QApplication
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -69,18 +71,38 @@ class ModelLoadDialog(QDialog):
         layout.setSpacing(14)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        title = QLabel("Setting up Parakeet AI Model")
+        model_short = getattr(self.transcriber, 'model_id', 'Model').split("/")[-1]
+        title = QLabel(f"Downloading {model_short}")
         title.setFont(QFont(title.font().family(), 13, QFont.Weight.Bold))
         layout.addWidget(title)
 
+        model_id = getattr(self.transcriber, 'model_id', 'nvidia/parakeet-tdt-1.1b')
         desc = QLabel(
-            "The NVIDIA Parakeet speech recognition model (~4 GB) needs to be "
-            "downloaded once before you can start transcribing.\n\n"
-            "This only happens on the first launch."
+            f"<b>{model_id}</b> needs to be downloaded before transcription can begin.\n\n"
+            "This only happens once per model."
         )
         desc.setWordWrap(True)
         desc.setStyleSheet("color: #555;")
         layout.addWidget(desc)
+
+        # Download location
+        cache_dir = os.path.join(
+            os.path.expanduser("~"), ".cache", "huggingface", "hub",
+            "models--" + model_id.replace("/", "--")
+        )
+        location_row = QHBoxLayout()
+        location_icon = QLabel("📁")
+        location_row.addWidget(location_icon)
+        location_label = QLabel(cache_dir)
+        location_label.setStyleSheet(
+            "color: #888; font-size: 10px; font-family: monospace;"
+        )
+        location_label.setWordWrap(True)
+        location_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        location_row.addWidget(location_label, stretch=1)
+        layout.addLayout(location_row)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)  # Indeterminate until done
