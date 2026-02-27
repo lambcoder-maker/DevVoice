@@ -12,6 +12,7 @@ class SystemTray(QObject):
     quit_requested = pyqtSignal()
     toggle_recording_requested = pyqtSignal()
     change_model_requested = pyqtSignal()
+    help_requested = pyqtSignal()
 
     COLORS = {
         "idle":       "#4CAF50",
@@ -38,6 +39,9 @@ class SystemTray(QObject):
 
         change_model_action = self.menu.addAction("Change Model…")
         change_model_action.triggered.connect(self.change_model_requested.emit)
+
+        help_action = self.menu.addAction("Commands & Hotkeys…")
+        help_action.triggered.connect(self.help_requested.emit)
 
         self.menu.addSeparator()
 

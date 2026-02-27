@@ -10,6 +10,7 @@ from ui.main_window import MainWindow
 from ui.control_window import ControlWindow
 from ui.model_download import ModelLoadDialog
 from ui.model_selector import ModelSelectorDialog
+from ui.help_dialog import HelpDialog
 import config
 import voice_commands
 
@@ -54,6 +55,7 @@ class SpeechToTextApp(QObject):
         self.system_tray.toggle_recording_requested.connect(self.on_toggle_recording)
         self.system_tray.quit_requested.connect(self.quit)
         self.system_tray.change_model_requested.connect(self.on_change_model)
+        self.system_tray.help_requested.connect(self.on_show_help)
         self.control_window.toggle_recording.connect(self.on_toggle_recording)
 
     def start(self):
@@ -221,6 +223,11 @@ class SpeechToTextApp(QObject):
         self.keyboard_typer.undo_last()
         self.control_window.status_label.setText("Undone")
         self.control_window.status_label.setStyleSheet("font-size: 12px; color: #888;")
+
+    def on_show_help(self):
+        """Open the Commands & Hotkeys reference dialog."""
+        dialog = HelpDialog()
+        dialog.exec()
 
     def on_change_model(self):
         """Open model selector and reload if user picks a different model."""
