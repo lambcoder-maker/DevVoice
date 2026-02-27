@@ -97,7 +97,9 @@ def apply_word_map(text: str, word_map: dict) -> str:
 def apply_punctuation_commands(text: str) -> str:
     """Replace spoken punctuation / formatting words with their symbols."""
     for pattern, replacement in _PUNCTUATION_COMMANDS:
-        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+        # Use a callable so re.sub never interprets the replacement as a
+        # regex template (avoids "bad escape" errors on \, \\, etc.)
+        text = re.sub(pattern, lambda m, r=replacement: r, text, flags=re.IGNORECASE)
 
     # Remove spurious space before punctuation: "hello , world" → "hello, world"
     text = re.sub(r'\s+([,\.!?:;])', r'\1', text)
