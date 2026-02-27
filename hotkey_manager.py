@@ -13,6 +13,8 @@ class HotkeyManager(QObject):
     def __init__(self):
         super().__init__()
         self.listener = None
+        self.hotkey_listener = None
+        self.release_listener = None
         self._hotkey_pressed = False
 
     def _on_activate(self):
