@@ -1,4 +1,4 @@
-"""First-run dialog: downloads and loads the Parakeet model with visible progress."""
+"""Model download and load dialog with visible progress."""
 
 import os
 from PyQt6.QtWidgets import (
@@ -10,7 +10,7 @@ from PyQt6.QtGui import QFont
 
 
 class _ModelLoaderThread(QThread):
-    """Loads (and downloads if needed) the Parakeet model off the main thread."""
+    """Loads (and downloads if needed) a model off the main thread."""
 
     progress = pyqtSignal(str)   # status message
     finished = pyqtSignal()
@@ -23,9 +23,9 @@ class _ModelLoaderThread(QThread):
     def run(self):
         try:
             # Patch NeMo's download to emit progress messages
-            self.progress.emit("Connecting to model server...")
+            self.progress.emit("Connecting…")
             self._patch_nemo_progress()
-            self.progress.emit("Downloading Parakeet model (~4 GB)…\nThis only happens once.")
+            self.progress.emit("Downloading model files…")
             self.transcriber.load_model()
             self.finished.emit()
         except Exception as e:
@@ -63,46 +63,50 @@ class ModelLoadDialog(QDialog):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setWindowTitle("Speech-to-Text — First Run Setup")
-        self.setFixedWidth(420)
+        model_id = getattr(self.transcriber, 'model_id', 'nvidia/parakeet-tdt-1.1b')
+        model_short = model_id.split("/")[-1]
+
+        self.setWindowTitle(f"DevVoice — Downloading {model_short}")
+        self.setFixedWidth(440)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowTitleHint)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(14)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        model_short = getattr(self.transcriber, 'model_id', 'Model').split("/")[-1]
         title = QLabel(f"Downloading {model_short}")
         title.setFont(QFont(title.font().family(), 13, QFont.Weight.Bold))
         layout.addWidget(title)
 
-        model_id = getattr(self.transcriber, 'model_id', 'nvidia/parakeet-tdt-1.1b')
         desc = QLabel(
-            f"<b>{model_id}</b> needs to be downloaded before transcription can begin.\n\n"
-            "This only happens once per model."
+            f"<b>{model_id}</b> will be downloaded before transcription can begin. "
+            "This only happens once."
         )
         desc.setWordWrap(True)
         desc.setStyleSheet("color: #555;")
         layout.addWidget(desc)
 
-        # Download location
-        cache_dir = os.path.join(
-            os.path.expanduser("~"), ".cache", "huggingface", "hub",
-            "models--" + model_id.replace("/", "--")
-        )
-        location_row = QHBoxLayout()
-        location_icon = QLabel("📁")
-        location_row.addWidget(location_icon)
+        # Destination path
+        try:
+            import config as _config
+            _base = _config.get_model_dir()
+        except Exception:
+            _base = os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub")
+        cache_dir = os.path.join(_base, "models--" + model_id.replace("/", "--"))
+
+        dest_label = QLabel("Saving to:")
+        dest_label.setStyleSheet("color: #888; font-size: 11px;")
+        layout.addWidget(dest_label)
+
         location_label = QLabel(cache_dir)
         location_label.setStyleSheet(
-            "color: #888; font-size: 10px; font-family: monospace;"
+            "color: #666; font-size: 10px; font-family: monospace;"
         )
         location_label.setWordWrap(True)
         location_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        location_row.addWidget(location_label, stretch=1)
-        layout.addLayout(location_row)
+        layout.addWidget(location_label)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 0)  # Indeterminate until done
@@ -135,7 +139,7 @@ class ModelLoadDialog(QDialog):
         self._success = True
         self.progress_bar.setRange(0, 1)
         self.progress_bar.setValue(1)
-        self.status_label.setText("Model ready!")
+        self.status_label.setText("Model downloaded and ready.")
         self.cancel_btn.setText("Continue")
         self.cancel_btn.clicked.disconnect()
         self.cancel_btn.clicked.connect(self.accept)
@@ -143,7 +147,7 @@ class ModelLoadDialog(QDialog):
     def _on_error(self, message: str):
         self.progress_bar.setRange(0, 1)
         self.progress_bar.setValue(0)
-        self.status_label.setText(f"Error: {message}")
+        self.status_label.setText(f"Download failed: {message}")
         self.status_label.setStyleSheet("color: #c00; font-size: 11px;")
         self.cancel_btn.setText("Close")
 

@@ -55,24 +55,56 @@ class SpeechToTextApp(QObject):
         self.control_window.toggle_recording.connect(self.on_toggle_recording)
 
     def start(self):
-        """Start the application, downloading the model on first run if needed."""
+        """Start the application."""
         self.system_tray.set_status("loading")
 
-        if not self.transcriber.is_model_cached():
-            # First run: show download + load dialog (blocks until done or cancelled)
-            dialog = ModelLoadDialog(self.transcriber)
-            if not dialog.start_loading():
-                from PyQt6.QtWidgets import QApplication
-                QApplication.quit()
-                return
+        if config.is_first_run() or not self.transcriber.is_model_cached():
+            # First run (no settings yet) OR model missing: show setup dialog first
+            self._show_setup_dialog()
         else:
-            # Model is cached: load in background, show control window as "loading"
+            # Returning user with cached model: load in background
             self.control_window.set_loading(self.transcriber.model_id)
             self.control_window.show()
             self._load_model_async()
+
+    def _show_setup_dialog(self):
+        """Show model selector on first run or when model is not found."""
+        from PyQt6.QtWidgets import QApplication
+        dialog = ModelSelectorDialog(
+            current_model=self.transcriber.model_id,
+            is_first_run=True,
+        )
+        if dialog.exec() != ModelSelectorDialog.DialogCode.Accepted:
+            QApplication.quit()
             return
 
-        self._on_model_ready()
+        new_model = dialog.selected_model
+        new_dir = dialog.selected_dir or config.get_model_dir()
+
+        # Persist choices
+        config.set_model(new_model)
+        config.set_model_dir(new_dir)
+
+        # Update cache dir for this session so downloads go to the right place
+        import os
+        os.environ["HF_HUB_CACHE"] = new_dir
+        os.environ["TRANSFORMERS_CACHE"] = new_dir
+
+        # Recreate transcriber with the chosen model
+        self.transcriber = Transcriber(model=new_model)
+
+        if not self.transcriber.is_model_cached():
+            # Not downloaded yet — show download progress dialog
+            dl = ModelLoadDialog(self.transcriber)
+            if not dl.start_loading():
+                QApplication.quit()
+                return
+            self._on_model_ready()
+        else:
+            # Already on disk — load into memory in background
+            self.control_window.set_loading(new_model)
+            self.control_window.show()
+            self._load_model_async()
 
     def _load_model_async(self):
         """Load a cached model in a background thread."""
@@ -87,6 +119,10 @@ class SpeechToTextApp(QObject):
         """Called when model is loaded and ready."""
         print("Model loaded. Ready for transcription.")
         self.system_tray.set_status("idle")
+        self.control_window.set_model_info(
+            self.transcriber.model_id,
+            self.transcriber.backend_name(),
+        )
         self.control_window.set_ready()
         self.control_window.show()
         self.system_tray.show()
@@ -158,8 +194,14 @@ class SpeechToTextApp(QObject):
         if not new_model or new_model == self.transcriber.model_id:
             return
 
-        # Persist choice
+        # Persist choices
         config.set_model(new_model)
+        new_dir = dialog.selected_dir
+        if new_dir:
+            config.set_model_dir(new_dir)
+            import os
+            os.environ["HF_HUB_CACHE"] = new_dir
+            os.environ["TRANSFORMERS_CACHE"] = new_dir
 
         # Stop hotkey while reloading
         self.hotkey_manager.stop()

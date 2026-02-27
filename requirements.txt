@@ -6,3 +6,5 @@ sounddevice>=0.4.6
 numpy>=1.24.0
 pynput>=1.7.6
 huggingface_hub[hf_xet]>=0.24.0
+transformers>=4.35.0
+accelerate>=0.24.0

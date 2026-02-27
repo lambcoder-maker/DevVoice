@@ -15,10 +15,15 @@ def _config_dir() -> str:
     return os.path.join(base, "DevVoice")
 
 
+def _default_model_dir() -> str:
+    return os.path.join(os.path.expanduser("~"), ".cache", "huggingface", "hub")
+
+
 CONFIG_PATH = os.path.join(_config_dir(), "settings.json")
 
 DEFAULTS = {
-    "model": "nvidia/parakeet-tdt-1.1b",  # HuggingFace model ID or local path
+    "model": "nvidia/parakeet-tdt-1.1b",
+    "model_dir": _default_model_dir(),
 }
 
 
@@ -46,3 +51,18 @@ def set_model(model: str):
     settings = load()
     settings["model"] = model
     save(settings)
+
+
+def get_model_dir() -> str:
+    return load()["model_dir"]
+
+
+def set_model_dir(path: str):
+    settings = load()
+    settings["model_dir"] = path
+    save(settings)
+
+
+def is_first_run() -> bool:
+    """True if the user has never completed setup (no settings file exists)."""
+    return not os.path.exists(CONFIG_PATH)

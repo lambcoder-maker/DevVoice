@@ -1,4 +1,4 @@
-"""Main window for transcription history."""
+"""Transcription history window."""
 
 from datetime import datetime
 from PyQt6.QtWidgets import (
@@ -27,11 +27,10 @@ class TranscriptionEntry(QFrame):
 
         layout = QVBoxLayout(self)
 
-        # Header with timestamp and copy button
         header = QHBoxLayout()
 
         time_label = QLabel(timestamp.strftime("%H:%M:%S"))
-        time_label.setStyleSheet("color: #666; font-size: 11px;")
+        time_label.setStyleSheet("color: #999; font-size: 11px;")
         header.addWidget(time_label)
 
         header.addStretch()
@@ -43,16 +42,13 @@ class TranscriptionEntry(QFrame):
 
         layout.addLayout(header)
 
-        # Text content
         text_label = QLabel(text)
         text_label.setWordWrap(True)
         text_label.setStyleSheet("font-size: 13px; padding: 4px 0;")
         layout.addWidget(text_label)
 
     def _copy_text(self):
-        """Copy transcription text to clipboard."""
-        clipboard = QApplication.clipboard()
-        clipboard.setText(self.text)
+        QApplication.clipboard().setText(self.text)
 
 
 class MainWindow(QMainWindow):
@@ -60,17 +56,15 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Speech-to-Text History")
+        self.setWindowTitle("DevVoice — Transcription History")
         self.setMinimumSize(400, 500)
         self.resize(500, 600)
 
-        # Central widget
         central = QWidget()
         self.setCentralWidget(central)
 
         layout = QVBoxLayout(central)
 
-        # Header
         header = QHBoxLayout()
 
         title = QLabel("Transcription History")
@@ -85,7 +79,6 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(header)
 
-        # Scrollable area for transcriptions
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -97,25 +90,21 @@ class MainWindow(QMainWindow):
         scroll.setWidget(self.entries_widget)
         layout.addWidget(scroll)
 
-        # Hotkey hint
-        hint = QLabel("Press Ctrl+Shift+R to start/stop recording")
-        hint.setStyleSheet("color: #888; font-size: 11px;")
+        hint = QLabel("Hotkey: Ctrl+Shift+R  —  start or stop recording from anywhere")
+        hint.setStyleSheet("color: #aaa; font-size: 11px;")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(hint)
 
     def add_transcription(self, text: str):
-        """Add a new transcription entry."""
         entry = TranscriptionEntry(text, datetime.now())
-        self.entries_layout.insertWidget(0, entry)  # Add at top
+        self.entries_layout.insertWidget(0, entry)
 
     def _clear_history(self):
-        """Clear all transcription entries."""
         while self.entries_layout.count():
             item = self.entries_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
     def closeEvent(self, event):
-        """Hide window instead of closing."""
         event.ignore()
         self.hide()
