@@ -24,6 +24,8 @@ CONFIG_PATH = os.path.join(_config_dir(), "settings.json")
 DEFAULTS = {
     "model": "nvidia/parakeet-tdt-1.1b",
     "model_dir": _default_model_dir(),
+    "word_map": {},           # spoken → typed substitutions, e.g. {"dev voice": "DevVoice"}
+    "voice_commands": True,   # enable spoken punctuation commands
 }
 
 
@@ -60,6 +62,26 @@ def get_model_dir() -> str:
 def set_model_dir(path: str):
     settings = load()
     settings["model_dir"] = path
+    save(settings)
+
+
+def get_word_map() -> dict:
+    return load()["word_map"]
+
+
+def set_word_map(word_map: dict):
+    settings = load()
+    settings["word_map"] = word_map
+    save(settings)
+
+
+def get_voice_commands_enabled() -> bool:
+    return load()["voice_commands"]
+
+
+def set_voice_commands_enabled(enabled: bool):
+    settings = load()
+    settings["voice_commands"] = enabled
     save(settings)
 
 

@@ -11,6 +11,7 @@ from ui.control_window import ControlWindow
 from ui.model_download import ModelLoadDialog
 from ui.model_selector import ModelSelectorDialog
 import config
+import voice_commands
 
 
 class TranscriptionWorker(QThread):
@@ -48,6 +49,7 @@ class SpeechToTextApp(QObject):
 
         # Connect signals
         self.hotkey_manager.toggle_recording.connect(self.on_toggle_recording)
+        self.hotkey_manager.undo_last.connect(self.on_undo_last)
         self.system_tray.show_window_requested.connect(self.main_window.show)
         self.system_tray.toggle_recording_requested.connect(self.on_toggle_recording)
         self.system_tray.quit_requested.connect(self.quit)
@@ -169,20 +171,56 @@ class SpeechToTextApp(QObject):
         self.worker.finished.connect(self.on_transcription_complete)
         self.worker.start()
 
-    def on_transcription_complete(self, text: str):
+    def on_transcription_complete(self, raw_text: str):
         """Handle completed transcription."""
         self.system_tray.set_status("idle")
-        self.control_window.set_transcription(text)
 
-        if text:
+        if not raw_text:
+            print("No speech detected.")
+            self.control_window.set_transcription("")
+            self.worker = None
+            return
+
+        # Run post-processing pipeline: word map → punctuation commands → control actions
+        text, action = voice_commands.process(
+            raw_text,
+            word_map=config.get_word_map(),
+            punctuation_enabled=config.get_voice_commands_enabled(),
+        )
+
+        self.control_window.set_transcription(text or raw_text)
+
+        if action == 'undo':
+            print("Voice command: undo last")
+            self.on_undo_last()
+        elif action == 'select_all':
+            print("Voice command: select all")
+            from pynput.keyboard import Controller as KbController, Key
+            kb = KbController()
+            with kb.pressed(Key.ctrl):
+                kb.press('a')
+                kb.release('a')
+        elif action == 'copy':
+            print("Voice command: copy")
+            from pynput.keyboard import Controller as KbController, Key
+            kb = KbController()
+            with kb.pressed(Key.ctrl):
+                kb.press('c')
+                kb.release('c')
+        elif text:
             print(f"Transcribed: {text}")
             self.keyboard_typer.type_text(text)
             self.main_window.add_transcription(text)
             self.control_window.set_typing_complete()
-        else:
-            print("No speech detected.")
 
         self.worker = None
+
+    def on_undo_last(self):
+        """Erase the last typed transcription block."""
+        print("Undo last transcription")
+        self.keyboard_typer.undo_last()
+        self.control_window.status_label.setText("Undone")
+        self.control_window.status_label.setStyleSheet("font-size: 12px; color: #888;")
 
     def on_change_model(self):
         """Open model selector and reload if user picks a different model."""

@@ -12,6 +12,7 @@ class KeyboardTyper:
 
     def __init__(self):
         self.keyboard = Controller()
+        self._last_char_count = 0
 
     def type_text(self, text: str):
         """Type the given text character by character."""
@@ -30,8 +31,20 @@ class KeyboardTyper:
 
         time.sleep(self.PRE_TYPE_DELAY)
 
+        self._last_char_count = len(text)
         for char in text:
             self._type_char(char)
+            time.sleep(self.CHAR_DELAY)
+
+    def undo_last(self):
+        """Erase the last typed block by pressing Backspace for each character."""
+        count = self._last_char_count
+        self._last_char_count = 0  # Prevent double-undo
+        if not count:
+            return
+        for _ in range(count):
+            self.keyboard.press(Key.backspace)
+            self.keyboard.release(Key.backspace)
             time.sleep(self.CHAR_DELAY)
 
     def _type_char(self, char: str):

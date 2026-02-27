@@ -8,6 +8,7 @@ class HotkeyManager(QObject):
     """Manages global hotkeys for the application."""
 
     toggle_recording = pyqtSignal()
+    undo_last = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -31,12 +32,17 @@ class HotkeyManager(QObject):
         except:
             pass
 
+    def _on_undo(self):
+        self.undo_last.emit()
+
     def start(self):
         """Start listening for hotkeys."""
         # Use GlobalHotKeys for reliable hotkey detection
         self.hotkey_listener = keyboard.GlobalHotKeys({
             '<ctrl>+<shift>+r': self._on_activate,
             '<ctrl>+<shift>+R': self._on_activate,
+            '<ctrl>+<shift>+z': self._on_undo,
+            '<ctrl>+<shift>+Z': self._on_undo,
         })
         self.hotkey_listener.start()
 
